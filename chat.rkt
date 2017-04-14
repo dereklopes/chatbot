@@ -70,21 +70,30 @@
         ((testInputRule6 input) (rule6 input name))
         ((testInputRule7 input) (rule7 input name))
         ((testInputRule8 input) (rule8 input name))
+        ((testInputRule9 input) (rule9 input name))
+        ((testInputRule10 input) (rule10 input name))
         (else (output (pick-random generic-response))))) ; rule 11 has been implemented for you
 
 ;;; rule 1 functions
 (define (testInputRule1 input)
-  (cond ((eqv? 'do (car input)) #t)
-        ((eqv? 'can (car input)) #t)
-        ((eqv? 'will (car input)) #t)
-        ((eqv? 'would (car input)) #t)
-        (else #f)))
+  (and (hasQM input)
+       (cond ((eqv? 'do (car input)) #t)
+             ((eqv? 'can (car input)) #t)
+             ((eqv? 'will (car input)) #t)
+             ((eqv? 'would (car input)) #t)
+             (else #f))))
 
 (define (rule1 input name)
-  (output (removeQM (list-ref
+  (output (list-ref
            (list (list 'yes 'i (car input))
-                 (append (list 'no name 'i (car input) 'not) (changePronouns (cddr input))))
-                 (random 2)))))
+                 (append (list 'no name 'i (car input) 'not) (changePronouns (removeQM (cddr input)))))
+                 (random 2))))
+
+(define (hasQM input)
+  (cond ((null? input) #f)
+        ((null? (cdr input)) (let ((word (symbol->string (car input))))
+                               (if (string=? (string (string-ref word (- (string-length word) 1))) "?") #t #f)))
+        (else (hasQM (cdr input)))))
 
 ;;; rule 2 functions
 ;;; returns a list of special topics included in the input
@@ -161,9 +170,9 @@
         (else (testInputRule6 (cdr input)))))
 
 (define (rule6 input name)
-  (output (pick-random (rule6responses))) #t)
+  (output (pick-random (rule6responses))))
 
-(define (rule6responses) '((i don't know)
+(define (rule6responses) '((i don\'t know)
                            (i have no idea)
                            (i have no clue)
                            (maybe)))
@@ -192,18 +201,43 @@
   (output (addQM (append (list 'why 'do 'you (car (cdr input))) (changePronouns (cddr input))))))
 
 (define (addQM input)
-  (cond ((null? input) '())
-        ((null? (cdr input)) (string->symbol (string-append (symbol->string (car input)) "?")))
+  (cond ((symbol? input) (string->symbol (string-append (symbol->string input) "?")))
+        ((null? input) '())
+        ((null? (cdr input)) (list (string->symbol (string-append (symbol->string (car input)) "?"))))
         (else (cons (car input) (addQM (cdr input))))))
 
-;;; pick one random element from the list choices
-(define (pick-random choices)
-  (list-ref choices (random (length choices))))
+;;; rule 9 functions
+(define (testInputRule9 input)
+  (cond ((null? input) #f)
+        ((and (eqv? (car input) 'i) (notEndsWithToo? input)) #t)
+        (else #f)))
+
+(define (notEndsWithToo? input)
+  (cond ((null? input) #t)
+        ((null? (cdr input)) (not (eqv? (car input) 'too)))
+        (else (notEndsWithToo? (cdr input)))))
+
+(define (rule9 input name)
+  (output (append input (list 'too))))
+
+;;; rule 10 functions
+(define (testInputRule10 input)
+  (cond ((eqv? (car input) 'tell) #t)
+        ((eqv? (car input) 'do) #t)
+        ((eqv? (car input) 'say) #t)
+        (else #f)))
+
+(define (rule10 input name)
+  (output (cons 'you input)))
 
 ;;; generic responses for rule 11
 (define generic-response '((that\'s nice)
                            (good to know)
                            (can you elaborate on that?)))
+
+;;; pick one random element from the list choices
+(define (pick-random choices)
+  (list-ref choices (random (length choices))))
 
 ;;; change pronouns
 (define (changePronouns input)
@@ -225,6 +259,3 @@
                                    (list (string->symbol (substring word 0 (- (string-length word) 1))))
                                    (list (string->symbol word)))))
         (else (cons (car input) (removeQM (cdr input))))))
-
-;;; for tests
-(chat-with 'Derek)
